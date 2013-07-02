@@ -1,4 +1,4 @@
 pyrets
 ======
 
-In python, login, search, get metadata, logout from a RETS server
+Using python3, this library implements the login, search, getmetadata, logout function.
