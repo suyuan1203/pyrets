@@ -1,7 +1,7 @@
 pyrets
 ======
 
-Using python3, this library implements the login, search, getmetadata, logout function.
+Using python3, it supports the login, search, getmetadata and logout transaction.
 
     rets_session = pyrets.RetsSession(user, passwd, user_agent, rets_version, login_url, user_agent_passwd)
     response_text = rets_session.login()
