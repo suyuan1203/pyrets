@@ -83,7 +83,7 @@ class RetsSession(object):
             limit = 'NONE'
         query_string = 'SearchType=%s&Class=%s&Query=%s&QueryType=DMQL2&Count=0&Format=COMPACT-DECODED&Limit=%s&Select=%s&StandardNames=0' % (
                         resource, search_class, query, limit, select)       
-        search_url = urljoin(self.base_url, self.server_info['Search'])+"?"+query_string
+        search_url = urljoin(self.base_url, self.server_info['Search']) + "?" + query_string
         search_response = self._session.get(search_url)
         search_response.raise_for_status()
         self._parse_search_response(search_response.text)
@@ -98,9 +98,9 @@ class RetsSession(object):
         getobject_url = urljoin(self.base_url, self.server_info['GetObject'])
         if self.user_agent_passwd:
             self._set_rets_ua_authorization()
-        getobject_response = self._session.get(getobject_url+"?Type=%s&Resource=%s&ID=%s" % (obj_type, resource, obj_id))
+        getobject_response = self._session.get(getobject_url + "?Type=%s&Resource=%s&ID=%s" % (obj_type, resource, obj_id))
         getobject_response.raise_for_status()
-        if getobject_response.headers['content-type']=='text/plain':
+        if getobject_response.headers['content-type'] == 'text/plain':
             self._parse_getobject_response(getobject_response.text)
         return getobject_response.content
 
