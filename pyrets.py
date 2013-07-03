@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import requests
 from xml.etree import ElementTree
 from urllib.parse import urlparse, urljoin
@@ -37,6 +39,7 @@ class RetsSession(object):
         self._session.auth = auth
 
         login_result = self._session.get(self.login_url)
+        login_result.raise_for_status()
         
         self.rets_server_info = self._parse_login_response(login_result.text)
         
@@ -49,14 +52,16 @@ class RetsSession(object):
 
     def logout(self):
         logout_url = urljoin(self.base_url, self.rets_server_info['Logout'])
-        self._set_rets_ua_authorization()
+        if self.user_agent_passwd:
+            self._set_rets_ua_authorization()
         logout_response = self._session.get(logout_url)
+        logout_response.raise_for_status()
         return logout_response.text
 
-    def getobject(self):
+    def getobject(self, obj_type, resource , obj_id):
         for i in range(3):
             try:
-                return self._getobject()
+                return self._getobject(obj_type, resource , obj_id)
             except socket.timeout:
                 if i < 3:
                     print('timeout, try again')
@@ -66,7 +71,8 @@ class RetsSession(object):
                 
     def getmetadata(self):
         get_meta_url = urljoin(self.base_url, self.rets_server_info['GetMetadata'])
-        self._set_rets_ua_authorization()
+        if self.user_agent_passwd:
+            self._set_rets_ua_authorization()
         metadata_text = self._session.get(get_meta_url + '?Type=METADATA-SYSTEM&ID=*&Format=STANDARD-XML')
         return metadata_text.text
                 
@@ -77,8 +83,11 @@ class RetsSession(object):
 
     def _getobject(self, obj_type, resource , obj_id):
         getobject_url = urljoin(self.base_url, self.rets_server_info['GetObject'])
-        self._set_rets_ua_authorization()
-        getobject_response = self._session.get(getobject_url+"?Type=%s&Resource=%s&ID=%s" % (obj_type, resource, ))
+        if self.user_agent_passwd:
+            self._set_rets_ua_authorization()
+        getobject_response = self._session.get(getobject_url+"?Type=%s&Resource=%s&ID=%s&Location=0" % (obj_type, resource, obj_id))
+        getobject_response.raise_for_status()
+        self._parse_getobject_response(getobject_response.text)
         return getobject_response.content
 
     def _parse_login_response(self, login_resp):
@@ -99,6 +108,14 @@ class RetsSession(object):
                 rets_info_dict[key_value_pair[0].strip()] = key_value_pair[1].strip()
         return rets_info_dict
     
+    def _parse_getobject_response(self, getobject_response):
+        login_xml = ElementTree.fromstring(getobject_response)
+        reply_code = login_xml.attrib['ReplyCode']
+        reply_text = login_xml.attrib['ReplyText']
+        if reply_code != '0':
+            raise GetObjectException(reply_code + "," + reply_text)
+            
+    
     def _set_rets_ua_authorization(self):
         self._session.headers['RETS-UA-Authorization'] = self.rets_ua_authorization;
 
@@ -112,6 +129,9 @@ class RetsSession(object):
     
 class LoginException(Exception):
     pass   
+
+class GetObjectException(Exception):
+    pass
 
 
     
