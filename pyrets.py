@@ -41,7 +41,7 @@ class RetsSession(object):
         login_result = self._session.get(self.login_url)
         login_result.raise_for_status()
         
-        self.rets_server_info = self._parse_login_response(login_result.text)
+        self.server_info = self._parse_login_response(login_result.text)
         
         if self.user_agent_passwd:
             self.rets_ua_authorization = self._calculate_rets_ua_authorization(login_result.cookies['RETS-Session-ID']
@@ -51,7 +51,7 @@ class RetsSession(object):
         return login_result.text
 
     def logout(self):
-        logout_url = urljoin(self.base_url, self.rets_server_info['Logout'])
+        logout_url = urljoin(self.base_url, self.server_info['Logout'])
         if self.user_agent_passwd:
             self._set_rets_ua_authorization()
         logout_response = self._session.get(logout_url)
@@ -70,19 +70,32 @@ class RetsSession(object):
                     raise
                 
     def getmetadata(self):
-        get_meta_url = urljoin(self.base_url, self.rets_server_info['GetMetadata'])
+        get_meta_url = urljoin(self.base_url, self.server_info['GetMetadata'])
         if self.user_agent_passwd:
             self._set_rets_ua_authorization()
-        metadata_text = self._session.get(get_meta_url + '?Type=METADATA-SYSTEM&ID=*&Format=STANDARD-XML')
-        return metadata_text.text
-                
+        response = self._session.get(get_meta_url + '?Type=METADATA-SYSTEM&ID=*&Format=STANDARD-XML')
+        response.raise_for_status()
+        self._parse_getmetadata_response(response.text)
+        return response.text
+    
+    def search(self, resource, search_class, query, limit, select):
+        if limit:
+            limit = 'NONE'
+        query_string = 'SearchType=%s&Class=%s&Query=%s&QueryType=DMQL2&Count=0&Format=COMPACT-DECODED&Limit=%s&Select=%s&StandardNames=0' % (
+                        resource, search_class, query, limit, select)       
+        search_url = urljoin(self.base_url, self.server_info['Search'])+"?"+query_string
+        search_response = self._session.get(search_url)
+        search_response.raise_for_status()
+        self._parse_search_response(search_response.text)
+        return search_response.text
+         
     def _get_base_url(self, url_str):
         url_parts = urlparse(url_str)
         resURL = url_parts.scheme + "://" + url_parts.netloc
         return resURL
 
     def _getobject(self, obj_type, resource , obj_id):
-        getobject_url = urljoin(self.base_url, self.rets_server_info['GetObject'])
+        getobject_url = urljoin(self.base_url, self.server_info['GetObject'])
         if self.user_agent_passwd:
             self._set_rets_ua_authorization()
         getobject_response = self._session.get(getobject_url+"?Type=%s&Resource=%s&ID=%s" % (obj_type, resource, obj_id))
@@ -92,11 +105,11 @@ class RetsSession(object):
         return getobject_response.content
 
     def _parse_login_response(self, login_resp):
-        login_xml = ElementTree.fromstring(login_resp)
-        reply_code = login_xml.attrib['ReplyCode']
-        reply_text = login_xml.attrib['ReplyText']
+        reply_code, reply_text = self._get_code_text(login_resp)
         if reply_code != '0':
             raise LoginException(reply_code + "," + reply_text)
+        
+        login_xml = ElementTree.fromstring(login_resp)
         if len(login_xml) > 0:
             rets_info = login_xml[0].text.split('\n')
         else:
@@ -109,14 +122,27 @@ class RetsSession(object):
                 rets_info_dict[key_value_pair[0].strip()] = key_value_pair[1].strip()
         return rets_info_dict
     
-    def _parse_getobject_response(self, getobject_response):
-        login_xml = ElementTree.fromstring(getobject_response)
-        reply_code = login_xml.attrib['ReplyCode']
-        reply_text = login_xml.attrib['ReplyText']
+    def _parse_getobject_response(self, response):
+        reply_code, reply_text = self._get_code_text(response)
         if reply_code != '0':
             raise GetObjectException(reply_code + "," + reply_text)
-            
     
+    def _parse_search_response(self, response):
+        reply_code, reply_text = self._get_code_text(response)
+        if reply_code != '0':
+            raise SearchException(reply_code + "," + reply_text) 
+        
+    def _parse_getmetadata_response(self, response):
+        reply_code, reply_text = self._get_code_text(response)
+        if reply_code != '0':
+            raise GetMetadataException(reply_code + "," + reply_text) 
+        
+    def _get_code_text(self, response_xml): 
+        xml_obj = ElementTree.fromstring(response_xml)
+        reply_code = xml_obj.attrib['ReplyCode']
+        reply_text = xml_obj.attrib['ReplyText']
+        return reply_code, reply_text
+        
     def _set_rets_ua_authorization(self):
         self._session.headers['RETS-UA-Authorization'] = self.rets_ua_authorization;
 
@@ -132,6 +158,12 @@ class LoginException(Exception):
     pass   
 
 class GetObjectException(Exception):
+    pass
+
+class SearchException(Exception):
+    pass
+
+class GetMetadataException(Exception):
     pass
 
 
