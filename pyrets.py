@@ -85,9 +85,10 @@ class RetsSession(object):
         getobject_url = urljoin(self.base_url, self.rets_server_info['GetObject'])
         if self.user_agent_passwd:
             self._set_rets_ua_authorization()
-        getobject_response = self._session.get(getobject_url+"?Type=%s&Resource=%s&ID=%s&Location=0" % (obj_type, resource, obj_id))
+        getobject_response = self._session.get(getobject_url+"?Type=%s&Resource=%s&ID=%s" % (obj_type, resource, obj_id))
         getobject_response.raise_for_status()
-        self._parse_getobject_response(getobject_response.text)
+        if getobject_response.headers['content-type']=='text/plain':
+            self._parse_getobject_response(getobject_response.text)
         return getobject_response.content
 
     def _parse_login_response(self, login_resp):
