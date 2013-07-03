@@ -7,9 +7,20 @@ Using python3, this library implements the login, search, getmetadata, logout fu
     response_text = rets_session.login()
     print(response_text)
 
+	#getmetadata
     metadata_text = rets_session.getmetadata()
     with open('./12meta.xml','w') as f:
         f.write(metadata_text)
+    
+    #getobject    
+    object_bin = rets_session.getobject('Photo','Property','40621107:1')
+	with open('./a.jpg', 'wb') as f:
+	    f.write(object_bin)
+	    
+	#search
+	response = rets_session.search('Property', 'RE_1', '(L_ListingID=40621107)', 1, 'L_UpdateDate')
+	print(response)
 
     response_text = rets_session.logout()  
     print(response_text)
+
