@@ -82,8 +82,10 @@ class RetsSession(object):
         if limit:
             limit = 'NONE'
         query_string = 'SearchType=%s&Class=%s&Query=%s&QueryType=DMQL2&Count=0&Format=COMPACT-DECODED&Limit=%s&Select=%s&StandardNames=0' % (
-                        resource, search_class, query, limit, select)       
-        search_url = urljoin(self.base_url, self.server_info['Search']) + "?" + query_string
+                        resource, search_class, query, limit, select)
+        search_url = urljoin(self.base_url, self.server_info['Search'])+"?"+query_string
+        if self.user_agent_passwd:
+            self._set_rets_ua_authorization()
         search_response = self._session.get(search_url)
         search_response.raise_for_status()
         self._parse_search_response(search_response.text)
