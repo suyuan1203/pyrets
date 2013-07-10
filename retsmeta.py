@@ -74,6 +74,8 @@ class StandardXmlMetaParser(MetaParser):
         for field_xml in field_xml_list:
             rets_field = RetsField()
             rets_field.system_name = field_xml.find('SystemName').text
+            rets_field.lookup_name = field_xml.find('LookupName').text
+            rets_field.long_name = field_xml.find('LongName').text
             field_list.append(rets_field)
         return field_list
     
@@ -164,6 +166,8 @@ class RetsClass(object):
 class RetsField(object):
     def __init__(self):
         self.system_name = None
+        self.long_name = None
+        self.lookup_name = None
         
 class RetsLookup(object):
     def __init__(self):
