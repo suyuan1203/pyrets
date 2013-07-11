@@ -6,6 +6,7 @@ from urllib.parse import urlparse, urljoin
 import socket
 import hashlib
 import time
+import urllib.parse
 
 
 class RetsSession(object):
@@ -81,12 +82,19 @@ class RetsSession(object):
     def search(self, resource, search_class, query, limit, select):
         if limit:
             limit = 'NONE'
-        query_string = 'SearchType=%s&Class=%s&Query=%s&QueryType=DMQL2&Count=0&Format=COMPACT-DECODED&Limit=%s&Select=%s&StandardNames=0' % (
-                        resource, search_class, query, limit, select)
-        search_url = urljoin(self.base_url, self.server_info['Search'])+"?"+query_string
+        params = {'SearchType': resource,
+                  'Class': search_class,
+                  'Query': query,
+                  'QueryType': 'DMQL2',
+                  'Count': '0',
+                  'Format': 'COMPACT-DECODED',
+                  'Limit': limit,
+                  'Select': select,
+                  'StandardNames': '0'}
+        search_url = urljoin(self.base_url, self.server_info['Search'])
         if self.user_agent_passwd:
             self._set_rets_ua_authorization()
-        search_response = self._session.get(search_url)
+        search_response = self._session.post(search_url, params)
         search_response.raise_for_status()
         self._parse_search_response(search_response.text)
         return search_response.text
@@ -130,8 +138,10 @@ class RetsSession(object):
             raise GetObjectException(reply_code + "," + reply_text)
     
     def _parse_search_response(self, response):
+        if not response:
+            raise SearchException('Empty response')
         reply_code, reply_text = self._get_code_text(response)
-        if reply_code != '0':
+        if reply_code not in ['0']:
             raise SearchException(reply_code + "," + reply_text) 
         
     def _parse_getmetadata_response(self, response):
