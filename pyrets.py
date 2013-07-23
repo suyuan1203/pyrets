@@ -10,7 +10,7 @@ import urllib.parse
 
 
 class RetsSession(object):
-    def __init__(self, user, passwd, user_agent, rets_version, login_url, user_agent_passwd=None):
+    def __init__(self, user, passwd, user_agent, user_agent_passwd, rets_version, login_url):
         self.rets_ua_authorization = None
         self.user = user
         self.passwd = passwd
@@ -20,6 +20,7 @@ class RetsSession(object):
         self.base_url = self._get_base_url(login_url)
         self.login_url = login_url
         self._session = None
+        self.login_called = False
 
     def login(self):
         self._session = requests.session()
@@ -48,10 +49,14 @@ class RetsSession(object):
             self.rets_ua_authorization = self._calculate_rets_ua_authorization(login_result.cookies['RETS-Session-ID']
                                                                             , self.user_agent
                                                                             , self.user_agent_passwd
-                                                                            , self.rets_version)
+                                                                           , self.rets_version)
+        self.login_called = True
         return login_result.text
 
     def logout(self):
+        if not self.login_called:
+            raise NoLoginException("You need to call login before logout")
+        
         logout_url = urljoin(self.base_url, self.server_info['Logout'])
         if self.user_agent_passwd:
             self._set_rets_ua_authorization()
@@ -60,6 +65,9 @@ class RetsSession(object):
         return logout_response.text
 
     def getobject(self, obj_type, resource , obj_id):
+        if not self.login_called:
+            raise NoLoginException("You need to call login before getobject")
+        
         for i in range(3):
             try:
                 return self._getobject(obj_type, resource , obj_id)
@@ -71,6 +79,9 @@ class RetsSession(object):
                     raise
                 
     def getmetadata(self):
+        if not self.login_called:
+            raise NoLoginException("You need to call login before getmetadata")
+        
         get_meta_url = urljoin(self.base_url, self.server_info['GetMetadata'])
         if self.user_agent_passwd:
             self._set_rets_ua_authorization()
@@ -80,6 +91,9 @@ class RetsSession(object):
         return response.text
     
     def search(self, resource, search_class, query, limit, select):
+        if not self.login_called:
+            raise NoLoginException("You need to call login before search")
+        
         if limit:
             limit = 'NONE'
         params = {'SearchType': resource,
@@ -123,7 +137,7 @@ class RetsSession(object):
         if len(login_xml) > 0:
             rets_info = login_xml[0].text.split('\n')
         else:
-            #for servers which don't have RETS-RESPONSE node
+            # for servers which don't have RETS-RESPONSE node
             rets_info = login_xml.text.split('\n')
         rets_info_dict = {}
         for info_item in rets_info:
@@ -176,6 +190,9 @@ class SearchException(Exception):
     pass
 
 class GetMetadataException(Exception):
+    pass
+
+class NoLoginException(Exception):
     pass
 
 
